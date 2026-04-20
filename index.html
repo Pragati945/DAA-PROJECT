@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Planner</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #f5f5f5; color: #222; min-height: 100vh; }
+header { background: #fff; border-bottom: 1px solid #ddd; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+header h1 { font-size: 17px; font-weight: 600; }
+header span { font-size: 13px; color: #888; }
+nav { background: #fff; border-bottom: 1px solid #ddd; display: flex; }
+nav button { padding: 12px 20px; border: none; background: none; cursor: pointer; font-size: 13px; color: #666; border-bottom: 2px solid transparent; }
+nav button.active { color: #1a56db; border-bottom-color: #1a56db; font-weight: 500; }
+nav button:hover:not(.active) { background: #f5f5f5; }
+.content { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.card h2 { font-size: 13px; font-weight: 600; color: #444; margin-bottom: 16px; text-transform: uppercase; letter-spacing: .5px; }
+.row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+label { font-size: 12px; color: #666; }
+input, select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; color: #222; width: 100%; }
+input:focus, select:focus { outline: none; border-color: #1a56db; }
+button.btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 13px; cursor: pointer; color: #333; }
+button.btn:hover { background: #f0f0f0; }
+button.btn.primary { background: #1a56db; color: #fff; border-color: #1a56db; }
+button.btn.primary:hover { background: #1447c0; }
+button.btn.danger { color: #c0392b; border-color: #e0c0c0; }
+button.btn.danger:hover { background: #fdf0f0; }
+button.btn.small { padding: 4px 10px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; font-size: 12px; color: #666; font-weight: 500; }
+td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.badge.green  { background: #e6f4ea; color: #1e6e33; }
+.badge.amber  { background: #fef3cd; color: #7d5a00; }
+.badge.red    { background: #fce8e6; color: #a31c0c; }
+.badge.blue   { background: #e8f0fe; color: #1557ad; }
+.badge.gray   { background: #f1f3f4; color: #5f6368; }
+.page { display: none; }
+.page.active { display: block; }
+.path-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin: 12px 0; }
+.path-city { background: #e8f0fe; color: #1447c0; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.path-city.start { background: #e6f4ea; color: #1e6e33; }
+.path-city.end   { background: #fce8e6; color: #a31c0c; }
+.path-arrow { padding: 0 6px; color: #999; font-size: 12px; display: flex; flex-direction: column; align-items: center; line-height: 1.3; }
+.path-arrow small { font-size: 10px; color: #aaa; }
+.stop-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; background: #fff; }
+.stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.stop-name { font-weight: 600; font-size: 15px; }
+.stop-meta { font-size: 12px; color: #666; margin-bottom: 8px; }
+.svc-row { background: #f9f9f9; border-radius: 6px; padding: 8px 12px; margin-top: 6px; font-size: 12px; }
+.svc-type { font-weight: 600; color: #444; margin-bottom: 2px; }
+.svc-detail { color: #666; }
+.result-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat { background: #f9f9f9; border-radius: 8px; padding: 14px 16px; }
+.stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 600; color: #222; }
+#toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 999; }
+#toast.show { opacity: 1; }
+.empty-state { text-align: center; padding: 32px; color: #aaa; font-size: 14px; }
+#map-wrap { position: relative; }
+#map-canvas { width: 100%; height: 440px; display: block; border-radius: 6px; background: #eef2ff; border: 1px solid #dde; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.map-note { font-size: 11px; color: #aaa; margin-top: 6px; }
+#map-tooltip { position: absolute; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; font-size: 12px; line-height: 1.6; pointer-events: none; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.1); z-index: 10; min-width: 130px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Route Planner</h1>
+  <span id="db-status">Connecting...</span>
+</header>
+
+<nav>
+  <button class="active" onclick="showPage('route',this)">Route</button>
+  <button onclick="showPage('cities',this)">Cities</button>
+  <button onclick="showPage('roads',this)">Roads</button>
+  <button onclick="showPage('emergency',this)">Emergency Services</button>
+</nav>
+
+<div class="content">
+
+  <!-- ROUTE PAGE -->
+  <div class="page active" id="page-route">
+    <div class="card">
+      <h2>Find Shortest Route</h2>
+      <div class="row">
+        <div class="field"><label>From</label><select id="r-src"></select></div>
+        <div class="field"><label>To</label><select id="r-dst"></select></div>
+        <div class="field">
+          <label>Mode</label>
+          <select id="r-mode">
+            <option value="0">Distance only</option>
+            <option value="1">Traffic-aware</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" onclick="runRoute()">Find Route</button>
+    </div>
+
+    <div class="card">
+      <h2>Graph Map — Zone Coloring</h2>
+      <div id="map-wrap">
+        <canvas id="map-canvas"></canvas>
+        <div id="map-tooltip"></div>
+      </div>
+      <div class="legend" id="map-legend"></div>
+      <div class="map-note">Each color = a traffic zone. Adjacent cities always get different zones (greedy graph coloring). Blue line = shortest route after search.</div>
+    </div>
+
+    <div id="route-out" style="display:none">
+      <div class="result-summary">
+        <div class="stat"><div class="stat-label">Total cost</div><div class="stat-value" id="r-cost">—</div></div>
+        <div class="stat"><div class="stat-label">Stops</div><div class="stat-value" id="r-stops">—</div></div>
+        <div class="stat"><div class="stat-label">Zones used</div><div class="stat-value" id="r-zones">—</div></div>
+      </div>
+      <div class="card">
+        <h2>Path</h2>
+        <div class="path-row" id="r-path"></div>
+      </div>
+      <div class="card">
+        <h2>Stop Details</h2>
+        <div id="r-stopcards"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CITIES PAGE -->
+  <div class="page" id="page-cities">
+    <div class="card">
+      <h2>Add City</h2>
+      <div class="row">
+        <div class="field"><label>City ID</label><input type="number" id="c-id" placeholder="e.g. 5"></div>
+        <div class="field"><label>City Name</label><input type="text" id="c-name" placeholder="e.g. Haridwar"></div>
+      </div>
+      <button class="btn primary" onclick="addCity()">Add City</button>
+    </div>
+    <div class="card">
+      <h2>All Cities</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th></th></tr></thead>
+        <tbody id="cities-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ROADS PAGE -->
+  <div class="page" id="page-roads">
+    <div class="card">
+      <h2>Add Road</h2>
+      <div class="row">
+        <div class="field"><label>From</label><select id="rd-src"></select></div>
+        <div class="field"><label>To</label><select id="rd-dst"></select></div>
+        <div class="field"><label>Distance (km)</label><input type="number" id="rd-dist" placeholder="80"></div>
+        <div class="field"><label>Traffic (1-5)</label><input type="number" id="rd-traf" min="1" max="5" placeholder="1"></div>
+      </div>
+      <button class="btn primary" onclick="addRoad()">Add Road</button>
+    </div>
+    <div class="card" id="edit-road-card" style="display:none">
+      <h2>Edit Road #<span id="edit-rid"></span></h2>
+      <div class="row">
+        <div class="field"><label>Distance (km)</label><input type="number" id="edit-dist"></div>
+        <div class="field"><label>Traffic (1-5)</label><input type="number" id="edit-traf" min="1" max="5"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" onclick="saveRoad()">Save</button>
+        <button class="btn" onclick="document.getElementById('edit-road-card').style.display='none'">Cancel</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All Roads</h2>
+      <table>
+        <thead><tr><th>From</th><th>To</th><th>Distance</th><th>Traffic</th><th>Cost</th><th></th></tr></thead>
+        <tbody id="roads-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EMERGENCY PAGE -->
+  <div class="page" id="page-emergency">
+    <div class="card">
+      <h2>Add / Update Service</h2>
+      <div class="row">
+        <div class="field"><label>City</label><select id="em-city"></select></div>
+        <div class="field"><label>Type</label>
+          <select id="em-type"><option>Police</option><option>Ambulance</option><option>Fire</option><option>Highway</option></select>
+        </div>
+        <div class="field"><label>Number</label><input id="em-num" placeholder="112"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Station</label><input id="em-station" placeholder="Station name"></div>
+        <div class="field"><label>Address</label><input id="em-addr" placeholder="Address"></div>
+        <div class="field"><label>Response time</label><input id="em-resp" placeholder="e.g. 8 minutes"></div>
+      </div>
+      <button class="btn primary" onclick="saveEmergency()">Save Service</button>
+    </div>
+    <div class="card">
+      <h2>All Services</h2>
+      <table>
+        <thead><tr><th>City</th><th>Type</th><th>Number</th><th>Station</th><th>Response</th><th></th></tr></thead>
+        <tbody id="em-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const API = 'api.php';
+let editingRoad = null;
+let cities = [];
+let mapData = null;
+let nodePos = {};
+let lastRouteData = null;
+
+const ZONE_COLORS = ['#4f86f7','#e07b39','#3bba6e','#c94fc9','#e8b84b','#29b8c9','#e05a5a','#8B5CF6'];
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show';
+  setTimeout(() => t.className='', 2800);
+}
+
+async function req(action, params='', method='GET', body=null) {
+  const r = await fetch(`${API}?action=${action}${params?'&'+params:''}`, {
+    method, headers:{'Content-Type':'application/json'},
+    body: body ? JSON.stringify(body) : null
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d;
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if (id==='cities')    loadCities();
+  if (id==='roads')     { loadSelects('rd-src','rd-dst'); loadRoads(); }
+  if (id==='emergency') { loadSelects('em-city'); loadEmergency(); }
+  if (id==='route')     { loadSelects('r-src','r-dst'); loadMap([]); }
+}
+
+async function loadSelects(...ids) {
+  cities = await req('get_cities');
+  ids.forEach(id => {
+    const s = document.getElementById(id);
+    if (!s) return;
+    s.innerHTML = cities.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  });
+  document.getElementById('db-status').textContent = 'Connected to daa_route_db';
+}
+
+// ═══════════════════════════════
+// MAP / GRAPH COLORING
+// ═══════════════════════════════
+async function loadMap(pathIds) {
+  try {
+    const d = await req('get_network');
+    mapData = d;
+    // Attach zone colors from last route if available
+    if (lastRouteData && lastRouteData.all_zones) {
+      const zMap = {};
+      lastRouteData.all_zones.forEach(z => zMap[z.id] = z.zone);
+      mapData.cities = mapData.cities.map(c => ({...c, zone: zMap[c.id] ?? 0}));
+    }
+    drawMap(pathIds || []);
+  } catch(e) { console.error('Map load error:', e); }
+}
+
+function layoutNodes(cities, W, H) {
+  const n = cities.length, pad = 72, pos = {};
+  if (!n) return pos;
+  const cx = W/2, cy = H/2;
+  const rx = (W - pad*2) / 2;
+  const ry = (H - pad*2) / 2;
+  cities.forEach((c, i) => {
+    const a = (2*Math.PI*i/n) - Math.PI/2;
+    pos[c.id] = { x: Math.round(cx + rx*Math.cos(a)), y: Math.round(cy + ry*Math.sin(a)), name: c.name, zone: c.zone||0 };
+  });
+  return pos;
+}
+
+function drawMap(pathIds) {
+  if (!mapData) return;
+  const canvas = document.getElementById('map-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = 440;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pathSet = new Set(pathIds.map(Number));
+  const pathEdges = new Set();
+  for (let i = 0; i < pathIds.length - 1; i++) {
+    const a = Math.min(pathIds[i], pathIds[i+1]);
+    const b = Math.max(pathIds[i], pathIds[i+1]);
+    pathEdges.add(`${a}-${b}`);
+  }
+
+  nodePos = layoutNodes(mapData.cities, W, H);
+
+  // Background
+  ctx.fillStyle = '#eef2ff';
+  ctx.fillRect(0, 0, W, H);
+
+  // Edges
+  const drawn = new Set();
+  mapData.roads.forEach(r => {
+    const key = `${Math.min(r.src_id,r.dst_id)}-${Math.max(r.src_id,r.dst_id)}`;
+    if (drawn.has(key)) return;
+    drawn.add(key);
+    const a = nodePos[r.src_id], b = nodePos[r.dst_id];
+    if (!a || !b) return;
+    const onPath = pathEdges.has(key);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = onPath ? '#1a56db' : '#c5cae9';
+    ctx.lineWidth   = onPath ? 4 : 1.5;
+    ctx.stroke();
+    // Distance label
+    const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+    const tw = ctx.measureText(r.distance_km+'km').width;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillRect(mx-tw/2-3, my-8, tw+6, 14);
+    ctx.fillStyle = onPath ? '#1a56db' : '#888';
+    ctx.font = (onPath?'bold ':'') + '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(r.distance_km+'km', mx, my);
+  });
+
+  // Nodes
+  mapData.cities.forEach(c => {
+    const p = nodePos[c.id];
+    if (!p) return;
+    const color  = ZONE_COLORS[(c.zone||0) % ZONE_COLORS.length];
+    const onPath = pathSet.has(Number(c.id));
+    const r      = onPath ? 22 : 18;
+    if (onPath) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, r+6, 0, Math.PI*2);
+      ctx.fillStyle = '#1a56db28'; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.strokeStyle = onPath ? '#1a56db' : '#fff';
+    ctx.lineWidth = onPath ? 3 : 2;
+    ctx.stroke();
+    // Zone label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Z'+(c.zone||0), p.x, p.y);
+    // City name
+    ctx.font = (onPath?'bold ':'') + '11px sans-serif';
+    const nw = ctx.measureText(c.name).width;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(p.x-nw/2-3, p.y+r+3, nw+6, 14);
+    ctx.fillStyle = onPath ? '#1a2e6e' : '#333';
+    ctx.textBaseline = 'top';
+    ctx.fillText(c.name, p.x, p.y+r+4);
+  });
+
+  // S / D markers on path endpoints
+  if (pathIds.length > 0) {
+    const s = nodePos[pathIds[0]], d = nodePos[pathIds[pathIds.length-1]];
+    if (s) drawMarker(ctx, s.x, s.y, 'S', '#1e6e33');
+    if (d && pathIds.length > 1) drawMarker(ctx, d.x, d.y, 'D', '#a31c0c');
+  }
+
+  buildLegend(mapData.cities);
+
+  // Tooltip
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+    const tip = document.getElementById('map-tooltip');
+    let hit = null;
+    for (const [id, p] of Object.entries(nodePos)) {
+      const dx=mx-p.x, dy=my-p.y;
+      if (Math.sqrt(dx*dx+dy*dy) < 26) { hit={id:+id,...p}; break; }
+    }
+    if (!hit) { tip.style.display='none'; return; }
+    const col = ZONE_COLORS[(hit.zone||0) % ZONE_COLORS.length];
+    tip.innerHTML = `<b>${hit.name}</b><br>
+      Zone: <span style="color:${col};font-weight:600">${hit.zone||0}</span><br>
+      ${pathSet.has(hit.id)?'<span style="color:#1a56db;font-size:11px">On shortest path</span>':''}`;
+    tip.style.display='block';
+    tip.style.left=(mx+14)+'px'; tip.style.top=(my-10)+'px';
+  };
+  canvas.onmouseleave = () => { document.getElementById('map-tooltip').style.display='none'; };
+}
+
+function drawMarker(ctx, x, y, label, color) {
+  ctx.beginPath(); ctx.arc(x, y-28, 9, 0, Math.PI*2);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font='bold 9px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(label, x, y-28);
+}
+
+function buildLegend(cities) {
+  const seen = {};
+  cities.forEach(c => { const z=c.zone||0; if(!(z in seen)) seen[z]=ZONE_COLORS[z%ZONE_COLORS.length]; });
+  document.getElementById('map-legend').innerHTML =
+    Object.entries(seen).sort((a,b)=>+a[0]-+b[0]).map(([z,col]) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${col}"></div>Zone ${z}</div>`
+    ).join('') +
+    `<div class="legend-item" style="margin-left:8px">
+       <div style="width:18px;height:3px;background:#1a56db;border-radius:2px"></div>
+       Shortest path
+     </div>
+     <div class="legend-item">
+       <div style="width:12px;height:12px;border-radius:50%;background:#1e6e33;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:bold">S</div> Source
+     </div>
+     <div class="legend-item">
+       <div style="width:12px;height:12px;border-radius:50%;background:#a31c0c;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:bold">D</div> Destination
+     </div>`;
+}
+
+// ═══════════════════════════════
+// CITIES
+// ═══════════════════════════════
+async function loadCities() {
+  cities = await req('get_cities');
+  document.getElementById('cities-tbl').innerHTML = cities.length
+    ? cities.map(c=>`<tr>
+        <td style="color:#888;font-size:12px">${c.id}</td>
+        <td>${c.name}</td>
+        <td><button class="btn small danger" onclick="deleteCity(${c.id},'${c.name}')">Delete</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" class="empty-state">No cities yet</td></tr>';
+}
+
+async function addCity() {
+  const id=document.getElementById('c-id').value, name=document.getElementById('c-name').value.trim();
+  if (!id||!name) return toast('Enter ID and name');
+  try {
+    await req('add_city','','POST',{id:+id,name});
+    toast('City added'); document.getElementById('c-id').value=''; document.getElementById('c-name').value='';
+    loadCities();
+  } catch(e) { toast(e.message); }
+}
+
+async function deleteCity(id,name) {
+  if (!confirm(`Delete "${name}" and all its roads/services?`)) return;
+  await req('delete_city',`id=${id}`,'DELETE'); toast('Deleted'); loadCities();
+}
+
+// ═══════════════════════════════
+// ROADS
+// ═══════════════════════════════
+async function loadRoads() {
+  const data = await req('get_roads');
+  const tl=['','Clear','Moderate','Heavy','Very Heavy','Gridlock'], bc=['','green','amber','red','red','red'];
+  document.getElementById('roads-tbl').innerHTML = data.length
+    ? data.map(r=>`<tr>
+        <td>${r.src}</td><td>${r.dst}</td>
+        <td>${r.distance_km} km</td>
+        <td><span class="badge ${bc[Math.min(r.traffic,5)]}">${tl[r.traffic]||r.traffic}</span></td>
+        <td style="font-size:12px;color:#888">${r.eff_weight}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn small" onclick="editRoad(${r.id},${r.distance_km},${r.traffic})">Edit</button>
+          <button class="btn small danger" onclick="deleteRoad(${r.id})">Del</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="empty-state">No roads yet</td></tr>';
+}
+
+async function addRoad() {
+  const src=+document.getElementById('rd-src').value, dst=+document.getElementById('rd-dst').value;
+  const dist=+document.getElementById('rd-dist').value, traf=+document.getElementById('rd-traf').value;
+  if (!dist||!traf) return toast('Fill all fields');
+  if (src===dst) return toast('Source and destination must differ');
+  try { await req('add_road','','POST',{src_id:src,dst_id:dst,distance_km:dist,traffic:traf}); toast('Road added'); loadRoads(); }
+  catch(e) { toast(e.message); }
+}
+
+function editRoad(id,dist,traf) {
+  editingRoad=id;
+  document.getElementById('edit-rid').textContent=id;
+  document.getElementById('edit-dist').value=dist;
+  document.getElementById('edit-traf').value=traf;
+  document.getElementById('edit-road-card').style.display='block';
+}
+
+async function saveRoad() {
+  const dist=+document.getElementById('edit-dist').value, traf=+document.getElementById('edit-traf').value;
+  try { await req('update_road','','POST',{id:editingRoad,distance_km:dist,traffic:traf}); toast('Road updated'); document.getElementById('edit-road-card').style.display='none'; loadRoads(); }
+  catch(e) { toast(e.message); }
+}
+
+async function deleteRoad(id) {
+  if (!confirm(`Delete road #${id}?`)) return;
+  await req('delete_road',`id=${id}`,'DELETE'); toast('Road deleted'); loadRoads();
+}
+
+// ═══════════════════════════════
+// EMERGENCY
+// ═══════════════════════════════
+async function loadEmergency() {
+  const data = await req('get_emergency');
+  document.getElementById('em-tbl').innerHTML = data.length
+    ? data.map(s=>`<tr>
+        <td>${s.city_name}</td>
+        <td><span class="badge blue">${s.type}</span></td>
+        <td>${s.number}</td><td>${s.station}</td><td>${s.response}</td>
+        <td><button class="btn small danger" onclick="delEmergency(${s.city_id},'${s.type}')">Del</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="empty-state">No services yet</td></tr>';
+}
+
+async function saveEmergency() {
+  const body = {
+    city_id:+document.getElementById('em-city').value,
+    type:document.getElementById('em-type').value,
+    number:document.getElementById('em-num').value.trim(),
+    station:document.getElementById('em-station').value.trim(),
+    address:document.getElementById('em-addr').value.trim(),
+    response:document.getElementById('em-resp').value.trim(),
+  };
+  if (!body.number||!body.station) return toast('Fill all fields');
+  await req('upsert_emergency','','POST',body); toast('Service saved'); loadEmergency();
+}
+
+async function delEmergency(city_id,type) {
+  if (!confirm(`Delete ${type} service?`)) return;
+  await req('delete_emergency',`city_id=${city_id}&type=${encodeURIComponent(type)}`,'DELETE');
+  toast('Deleted'); loadEmergency();
+}
+
+// ═══════════════════════════════
+// ROUTE
+// ═══════════════════════════════
+async function runRoute() {
+  const src=document.getElementById('r-src').value;
+  const dst=document.getElementById('r-dst').value;
+  const mode=document.getElementById('r-mode').value;
+  if (src===dst) return toast('Pick different cities');
+  try {
+    const d = await req('shortest_path',`src=${src}&dst=${dst}&use_traffic=${mode}`);
+    if (d.total_cost===null) { toast('No route found'); return; }
+    lastRouteData = d;
+
+    document.getElementById('r-cost').textContent  = d.total_cost;
+    document.getElementById('r-stops').textContent = d.stops.length;
+    document.getElementById('r-zones').textContent = d.total_zones;
+    document.getElementById('route-out').style.display = 'block';
+
+    // Redraw map with zone colors + highlighted path
+    await loadMap(d.path_ids);
+
+    // Path visual
+    let html='';
+    d.stops.forEach((s,i) => {
+      const cls = i===0?'start':i===d.stops.length-1?'end':'';
+      html += `<div class="path-city ${cls}">${s.city_name}</div>`;
+      if (s.next_dist!==null)
+        html += `<div class="path-arrow"><span>&#8594;</span><small>${s.next_dist}km / T${s.next_traffic}</small></div>`;
+    });
+    document.getElementById('r-path').innerHTML = html;
+
+    // Stop cards
+    const tl=['','Clear','Moderate','Heavy','Very Heavy','Gridlock'];
+    const tb=['','green','amber','red','red','red'];
+    document.getElementById('r-stopcards').innerHTML = d.stops.map((s,i) => {
+      const col  = ZONE_COLORS[(s.zone||0) % ZONE_COLORS.length];
+      const road = s.next_dist!==null
+        ? `<div style="font-size:12px;color:#666;margin-bottom:8px">
+            Next: <b>${s.next_dist} km</b> &nbsp;·&nbsp;
+            Traffic: <span class="badge ${tb[Math.min(s.next_traffic,5)]}">${tl[s.next_traffic]||s.next_traffic}</span> &nbsp;·&nbsp;
+            Cost: <b>${s.next_cost}</b>
+           </div>` : '';
+      const svcs = s.services.length
+        ? s.services.map(sv=>`<div class="svc-row">
+            <div class="svc-type">${sv.type}</div>
+            <div class="svc-detail">${sv.number} · ${sv.station} · ${sv.response}</div>
+          </div>`).join('')
+        : '<div style="font-size:12px;color:#aaa;margin-top:6px">No emergency services</div>';
+      return `<div class="stop-card">
+        <div class="stop-header">
+          <span class="stop-name">${s.city_name}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500">
+            <span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block"></span>
+            Zone ${s.zone||0}
+          </span>
+        </div>
+        <div class="stop-meta">Stop ${i+1} of ${d.stops.length} &nbsp;·&nbsp; ${s.dist_from_src} km from start</div>
+        ${road}${svcs}
+      </div>`;
+    }).join('');
+
+    document.querySelector('#route-out').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(e) { toast(e.message); }
+}
+
+// Init
+(async () => {
+  await loadSelects('r-src','r-dst','rd-src','rd-dst','em-city');
+  await loadMap([]);
+  window.addEventListener('resize', () => { if(mapData) drawMap(lastRouteData ? lastRouteData.path_ids : []); });
+})();
+</script>
+</body>
+</html>

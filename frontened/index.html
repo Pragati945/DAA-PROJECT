@@ -428,10 +428,7 @@ function buildLegend(cities) {
        <div style="width:12px;height:12px;border-radius:50%;background:#a31c0c;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:bold">D</div> Destination
      </div>`;
 }
-
-// ═══════════════════════════════
 // CITIES
-// ═══════════════════════════════
 async function loadCities() {
   cities = await req('get_cities');
   document.getElementById('cities-tbl').innerHTML = cities.length
@@ -457,10 +454,7 @@ async function deleteCity(id,name) {
   if (!confirm(`Delete "${name}" and all its roads/services?`)) return;
   await req('delete_city',`id=${id}`,'DELETE'); toast('Deleted'); loadCities();
 }
-
-// ═══════════════════════════════
 // ROADS
-// ═══════════════════════════════
 async function loadRoads() {
   const data = await req('get_roads');
   const tl=['','Clear','Moderate','Heavy','Very Heavy','Gridlock'], bc=['','green','amber','red','red','red'];
@@ -505,10 +499,7 @@ async function deleteRoad(id) {
   if (!confirm(`Delete road #${id}?`)) return;
   await req('delete_road',`id=${id}`,'DELETE'); toast('Road deleted'); loadRoads();
 }
-
-// ═══════════════════════════════
 // EMERGENCY
-// ═══════════════════════════════
 async function loadEmergency() {
   const data = await req('get_emergency');
   document.getElementById('em-tbl').innerHTML = data.length
@@ -539,10 +530,7 @@ async function delEmergency(city_id,type) {
   await req('delete_emergency',`city_id=${city_id}&type=${encodeURIComponent(type)}`,'DELETE');
   toast('Deleted'); loadEmergency();
 }
-
-// ═══════════════════════════════
 // ROUTE
-// ═══════════════════════════════
 async function runRoute() {
   const src=document.getElementById('r-src').value;
   const dst=document.getElementById('r-dst').value;
